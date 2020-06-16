@@ -1,13 +1,26 @@
 package evp
 
 import (
+	"crypto/aes"
 	"crypto/md5"
 	"crypto/sha256"
+	"fmt"
 	"hash"
 )
 
-// bytesToKey implements the Openssl EVP_BytesToKey method
-func bytesToKey(salt, data []byte, h hash.Hash, keyLen, blockLen int) (key, iv []byte) {
+const (
+	pkcs5SaltLen = 8
+	aes265KeyLen = 32
+)
+
+// BytesToKey implements the Openssl EVP_BytesToKey logic.
+// It takes the salt, data, a hash type and the key/block length used by that type.
+// As such it differs considerably from the openssl method in C.
+func BytesToKey(salt, data []byte, h hash.Hash, keyLen, blockLen int) (key, iv []byte) {
+	saltLen := len(salt)
+	if saltLen > 0 && saltLen != pkcs5SaltLen {
+		panic(fmt.Sprintf("Salt length is %d, expected %d", saltLen, pkcs5SaltLen))
+	}
 	var (
 		concat   []byte
 		lastHash []byte
@@ -24,12 +37,12 @@ func bytesToKey(salt, data []byte, h hash.Hash, keyLen, blockLen int) (key, iv [
 	return concat[:keyLen], concat[keyLen:totalLen]
 }
 
-// BytesToKey is the exported implementation of the MD5 version of EVP_BytesToKey
-func BytesToKey(salt, data []byte, keyLen, blockLen int) (key []byte, iv []byte) {
-	return bytesToKey(salt, data, md5.New(), keyLen, blockLen)
+// BytesToKeyAES256CBC implements the SHA256 version of EVP_BytesToKey using AES CBC
+func BytesToKeyAES256CBC(salt, data []byte) (key []byte, iv []byte) {
+	return BytesToKey(salt, data, sha256.New(), aes265KeyLen, aes.BlockSize)
 }
 
-// BytesToKey256 is the exported implementation of the SHA256 version of EVP_BytesToKey
-func BytesToKey256(salt, data []byte, keyLen, blockLen int) (key []byte, iv []byte) {
-	return bytesToKey(salt, data, sha256.New(), keyLen, blockLen)
+// BytesToKeyAES256CBCMD5 implements the MD5 version of EVP_BytesToKey using AES CBC
+func BytesToKeyAES256CBCMD5(salt, data []byte) (key []byte, iv []byte) {
+	return BytesToKey(salt, data, md5.New(), aes265KeyLen, aes.BlockSize)
 }

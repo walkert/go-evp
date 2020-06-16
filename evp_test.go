@@ -6,21 +6,19 @@ import (
 )
 
 const (
-	blockLen    int    = 16
-	keyLen      int    = 32
-	goodSaltHex string = "8c17a0f39ec8624a"
-	badSaltHex  string = "8817b0d30fg4934e"
-	goodKey     string = "e2dbc7d5a2ac454743582471c6d9b316fdb55f841632ceef02ad7bc9f559dfae"
-	goodIV      string = "fe1377f6c8ac2ece82f71743198bb191"
-	goodKey256  string = "640df03bf7576a74789a9cbec5dff5594991c16a786b0c1a54a6c8a386bed508"
-	goodIV256   string = "5ac94de87745426a28382e6d495e0992"
-	password    string = "password"
+	blockLen   int    = 16
+	keyLen     int    = 32
+	goodKeyMD5 string = "fdbdf3419fff98bdb0241390f62a9db35f4aba29d77566377997314ebfc709f2"
+	goodIVMD5  string = "0b5ca7b1081f94b1ac12e3c8ba87d05a"
+	goodKey    string = "0c8cde87480244c4d1bbd7401f70b7aebedf5a4453d01a7665db51aaf4d7dd72"
+	goodIV     string = "6dea80f410c6fa07183a01eed7efcf6e"
+	password   string = "password"
 )
 
-func getSalt(s string) []byte {
-	salt, _ := hex.DecodeString(s)
-	return salt
-}
+var (
+	badSalt  = []byte("salt")
+	goodSalt = []byte("saltsalt")
+)
 
 func bytesToHex(b []byte) string {
 	return hex.EncodeToString(b)
@@ -35,8 +33,7 @@ func getOutputs(key, iv []byte) (hexKey, hexIV string, lenKey, lenIV int) {
 }
 
 func TestGoodSalt(t *testing.T) {
-	salt := getSalt(goodSaltHex)
-	key, iv := BytesToKey(salt, []byte(password), keyLen, blockLen)
+	key, iv := BytesToKeyAES256CBC(goodSalt, []byte(password))
 	hexKey, hexIV, keyLength, ivLength := getOutputs(key, iv)
 	if hexKey != goodKey {
 		t.Fatalf("Wanted key '%s', got '%s'\n", goodKey, hexKey)
@@ -52,15 +49,14 @@ func TestGoodSalt(t *testing.T) {
 	}
 }
 
-func TestGoodSalt256(t *testing.T) {
-	salt := getSalt(goodSaltHex)
-	key, iv := BytesToKey256(salt, []byte(password), keyLen, blockLen)
+func TestGoodSaltMD5(t *testing.T) {
+	key, iv := BytesToKeyAES256CBCMD5(goodSalt, []byte(password))
 	hexKey, hexIV, keyLength, ivLength := getOutputs(key, iv)
-	if hexKey != goodKey256 {
-		t.Fatalf("Wanted key '%s', got '%s'\n", goodKey256, hexKey)
+	if hexKey != goodKeyMD5 {
+		t.Fatalf("Wanted key '%s', got '%s'\n", goodKeyMD5, hexKey)
 	}
-	if hexIV != goodIV256 {
-		t.Fatalf("Wanted IV '%s', got '%s'\n", goodIV256, hexIV)
+	if hexIV != goodIVMD5 {
+		t.Fatalf("Wanted IV '%s', got '%s'\n", goodIVMD5, hexIV)
 	}
 	if keyLength != 32 {
 		t.Fatalf("Wanted key length %d, got %d\n", 32, keyLength)
@@ -71,20 +67,14 @@ func TestGoodSalt256(t *testing.T) {
 }
 
 func TestBadSalt(t *testing.T) {
-	salt := getSalt(badSaltHex)
-	key, iv := BytesToKey(salt, []byte(password), keyLen, blockLen)
-	hexKey, hexIV, _, _ := getOutputs(key, iv)
-	if hexKey == goodKey {
-		t.Fatalf("Got a valid key using an invalid Salt!")
-	}
-	if hexIV == goodIV {
-		t.Fatalf("Got a valid IV using an invalid Salt!")
-	}
+	defer func() { recover() }()
+	key, iv := BytesToKeyAES256CBC(badSalt, []byte(password))
+	getOutputs(key, iv)
+	t.Fatalf("Expected a panic due to invalid salt length but one did not occur")
 }
 
 func TestBadPassword(t *testing.T) {
-	salt := getSalt(goodSaltHex)
-	key, iv := BytesToKey(salt, []byte("badpassword"), keyLen, blockLen)
+	key, iv := BytesToKeyAES256CBC(goodSalt, []byte("badpassword"))
 	hexKey, hexIV, _, _ := getOutputs(key, iv)
 	if hexKey == goodKey {
 		t.Fatalf("Got a valid key using an invalid password!")

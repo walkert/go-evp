@@ -1,10 +1,10 @@
 # go-evp
 
-An implementation of the Openssl [EVP\_BytesToKey](https://wiki.openssl.org/index.php/Manual:EVP_BytesToKey(3)) function.
+An implementation of the Openssl [EVP\_BytesToKey](https://www.openssl.org/docs/man1.0.2/man3/EVP_BytesToKey.html) function.
 
 ## Overview
 
-This library can be used to provide the key and IV for a given salt and passphrase. 
+This library can be used to provide the key and IV for a given salt and passphrase. Note that although it implements the logic, the function signature does not match. See `BytesToKeyAES256CBC` for a helper function that works with aes-256-cbc.
 
 ## Usage
 
@@ -27,7 +27,7 @@ func main() {
 	data, _ := ioutil.ReadFile("encrypted.file")
 	salt := data[len(salted):aes.BlockSize]
 	payload := data[aes.BlockSize:]
-	key, iv := evp.BytesToKey(salt, []byte("password"), 32, 16)
+	key, iv := evp.BytesToKeyAES256CBC(salt, []byte("password"))
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		panic(err)
